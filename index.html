@@ -33,7 +33,7 @@
       border: 2px solid white;
     }
 
-    .bomb {
+    .bomb, .powerup {
       position: absolute;
       top: -40px;
       text-align: center;
@@ -56,6 +56,40 @@
       font-size: 16px;
       padding: 5px 10px;
     }
+
+    #startScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    #startScreen h1 {
+      margin-bottom: 20px;
+    }
+
+    .difficulty-btn {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin: 5px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background: white;
+      color: black;
+    }
+
+    .difficulty-btn:hover {
+      background: lightgray;
+    }
   </style>
 </head>
 <body>
@@ -65,6 +99,12 @@
     <div id="player">
       <img src="player.png" alt="Player">
     </div>
+    <div id="startScreen">
+      <h1>Select Difficulty</h1>
+      <button class="difficulty-btn" data-diff="easy">Easy</button>
+      <button class="difficulty-btn" data-diff="medium">Medium</button>
+      <button class="difficulty-btn" data-diff="hard">Hard</button>
+    </div>
   </div>
 
   <script>
@@ -72,10 +112,12 @@
     const game = document.getElementById("game");
     const scoreDisplay = document.getElementById("score");
     const pauseBtn = document.getElementById("pauseBtn");
+    const startScreen = document.getElementById("startScreen");
+    const difficultyButtons = document.querySelectorAll(".difficulty-btn");
 
     let playerX = window.innerWidth / 2;
     let score = 0;
-    let gameInterval, bombInterval;
+    let gameInterval, bombInterval, powerUpInterval;
     let paused = false;
     let currentDifficulty = "medium";
 
@@ -85,25 +127,22 @@
       hard: 400
     };
 
-    const validDifficulties = {
-      easy: "Easy",
-      medium: "Medium",
-      hard: "Hard"
-    };
-
-    function askForDifficulty() {
-      let choice;
-      do {
-        choice = prompt("Choose difficulty: easy, medium, or hard").toLowerCase();
-      } while (!validDifficulties.hasOwnProperty(choice));
-
-      currentDifficulty = choice;
-      startGame();
-    }
+    difficultyButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentDifficulty = btn.dataset.diff;
+        startScreen.style.display = "none";
+        startGame();
+      });
+    });
 
     function setBombInterval() {
       if (bombInterval) clearInterval(bombInterval);
       bombInterval = setInterval(spawnBomb, bombSpeeds[currentDifficulty]);
+    }
+
+    function setPowerUpInterval() {
+      if (powerUpInterval) clearInterval(powerUpInterval);
+      powerUpInterval = setInterval(spawnPowerUp, 7000); // every 7 seconds
     }
 
     document.addEventListener("keydown", e => {
@@ -121,17 +160,13 @@
       const bomb = document.createElement("div");
       bomb.classList.add("bomb");
 
-      // 10% chance to be 💩 instead of 💣
       const isPoop = Math.random() < 0.1;
       bomb.innerText = isPoop ? "💩" : "💣";
 
       const bombSize = Math.random();
       let size = 40;
-      if (bombSize < 0.33) {
-        size = 25;
-      } else if (bombSize > 0.66) {
-        size = 60;
-      }
+      if (bombSize < 0.33) size = 25;
+      else if (bombSize > 0.66) size = 60;
 
       bomb.style.width = size + "px";
       bomb.style.height = size + "px";
@@ -165,6 +200,46 @@
       }, 20);
     }
 
+    function spawnPowerUp() {
+      if (paused) return;
+
+      const powerup = document.createElement("div");
+      powerup.classList.add("powerup");
+      powerup.innerText = "⭐️";
+      powerup.style.width = "40px";
+      powerup.style.height = "40px";
+      powerup.style.fontSize = "30px";
+      powerup.style.left = Math.random() * (window.innerWidth - 40) + "px";
+      game.appendChild(powerup);
+
+      let powerY = 0;
+      const fall = setInterval(() => {
+        if (paused) return;
+
+        powerY += 4;
+        powerup.style.top = powerY + "px";
+
+        const powerRect = powerup.getBoundingClientRect();
+        const playerRect = player.getBoundingClientRect();
+
+        if (
+          powerRect.bottom >= playerRect.top &&
+          powerRect.left < playerRect.right &&
+          powerRect.right > playerRect.left
+        ) {
+          clearInterval(fall);
+          score += 50;
+          scoreDisplay.innerText = "Score: " + score;
+          powerup.remove();
+        }
+
+        if (powerY > window.innerHeight) {
+          clearInterval(fall);
+          powerup.remove();
+        }
+      }, 20);
+    }
+
     function updateScore() {
       if (!paused) {
         score++;
@@ -175,6 +250,7 @@
     function endGame() {
       clearInterval(gameInterval);
       clearInterval(bombInterval);
+      clearInterval(powerUpInterval);
       alert("Game Over! Your score was " + score);
       window.location.reload();
     }
@@ -187,9 +263,8 @@
     function startGame() {
       gameInterval = setInterval(updateScore, 1000);
       setBombInterval();
+      setPowerUpInterval();
     }
-
-    askForDifficulty();
   </script>
 </body>
 </html>
