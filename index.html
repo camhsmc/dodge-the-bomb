@@ -33,7 +33,7 @@
       border: 2px solid white;
     }
 
-    .bomb, .powerup {
+    .bomb, .powerup, .food {
       position: absolute;
       top: -40px;
       text-align: center;
@@ -90,6 +90,34 @@
     .difficulty-btn:hover {
       background: lightgray;
     }
+
+    #highscores {
+      position: absolute;
+      top: 60px;
+      right: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      width: 200px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    #highscores h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    #highscores ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    #highscores li {
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
@@ -100,10 +128,16 @@
       <img src="player.png" alt="Player">
     </div>
     <div id="startScreen">
-      <h1>Select Difficulty</h1>
+      <h1>What's your name?</h1>
+      <input type="text" id="playerNameInput" placeholder="Enter your name" />
+      <h2>Select Difficulty</h2>
       <button class="difficulty-btn" data-diff="easy">Easy</button>
       <button class="difficulty-btn" data-diff="medium">Medium</button>
       <button class="difficulty-btn" data-diff="hard">Hard</button>
+    </div>
+    <div id="highscores">
+      <h3>High Scores</h3>
+      <ul id="scoreList"></ul>
     </div>
   </div>
 
@@ -114,12 +148,15 @@
     const pauseBtn = document.getElementById("pauseBtn");
     const startScreen = document.getElementById("startScreen");
     const difficultyButtons = document.querySelectorAll(".difficulty-btn");
+    const playerNameInput = document.getElementById("playerNameInput");
+    const scoreList = document.getElementById("scoreList");
 
     let playerX = window.innerWidth / 2;
     let score = 0;
-    let gameInterval, bombInterval, powerUpInterval;
+    let gameInterval, bombInterval, powerUpInterval, foodInterval;
     let paused = false;
     let currentDifficulty = "medium";
+    let playerName = "Player";
 
     const bombSpeeds = {
       easy: 1200,
@@ -129,6 +166,8 @@
 
     difficultyButtons.forEach(btn => {
       btn.addEventListener("click", () => {
+        const name = playerNameInput.value.trim();
+        playerName = name ? name : "Player";
         currentDifficulty = btn.dataset.diff;
         startScreen.style.display = "none";
         startGame();
@@ -142,7 +181,12 @@
 
     function setPowerUpInterval() {
       if (powerUpInterval) clearInterval(powerUpInterval);
-      powerUpInterval = setInterval(spawnPowerUp, 7000); // every 7 seconds
+      powerUpInterval = setInterval(spawnPowerUp, 7000);
+    }
+
+    function setFoodInterval() {
+      if (foodInterval) clearInterval(foodInterval);
+      foodInterval = setInterval(spawnFood, 4000);
     }
 
     document.addEventListener("keydown", e => {
@@ -159,9 +203,7 @@
 
       const bomb = document.createElement("div");
       bomb.classList.add("bomb");
-
-      const isPoop = Math.random() < 0.1;
-      bomb.innerText = isPoop ? "💩" : "💣";
+      bomb.innerText = Math.random() < 0.1 ? "💩" : "💣";
 
       const bombSize = Math.random();
       let size = 40;
@@ -174,26 +216,26 @@
       bomb.style.left = Math.random() * (window.innerWidth - size) + "px";
       game.appendChild(bomb);
 
-      let bombY = 0;
+      let y = 0;
       const fall = setInterval(() => {
         if (paused) return;
 
-        bombY += 5;
-        bomb.style.top = bombY + "px";
+        y += 5;
+        bomb.style.top = y + "px";
 
-        const bombRect = bomb.getBoundingClientRect();
+        const rect = bomb.getBoundingClientRect();
         const playerRect = player.getBoundingClientRect();
 
         if (
-          bombRect.bottom >= playerRect.top &&
-          bombRect.left < playerRect.right &&
-          bombRect.right > playerRect.left
+          rect.bottom >= playerRect.top &&
+          rect.left < playerRect.right &&
+          rect.right > playerRect.left
         ) {
           clearInterval(fall);
           endGame();
         }
 
-        if (bombY > window.innerHeight) {
+        if (y > window.innerHeight) {
           clearInterval(fall);
           bomb.remove();
         }
@@ -212,47 +254,101 @@
       powerup.style.left = Math.random() * (window.innerWidth - 40) + "px";
       game.appendChild(powerup);
 
-      let powerY = 0;
+      let y = 0;
       const fall = setInterval(() => {
         if (paused) return;
 
-        powerY += 4;
-        powerup.style.top = powerY + "px";
+        y += 4;
+        powerup.style.top = y + "px";
 
-        const powerRect = powerup.getBoundingClientRect();
+        const rect = powerup.getBoundingClientRect();
         const playerRect = player.getBoundingClientRect();
 
         if (
-          powerRect.bottom >= playerRect.top &&
-          powerRect.left < playerRect.right &&
-          powerRect.right > playerRect.left
+          rect.bottom >= playerRect.top &&
+          rect.left < playerRect.right &&
+          rect.right > playerRect.left
         ) {
           clearInterval(fall);
           score += 50;
-          scoreDisplay.innerText = "Score: " + score;
+          updateScore();
           powerup.remove();
         }
 
-        if (powerY > window.innerHeight) {
+        if (y > window.innerHeight) {
           clearInterval(fall);
           powerup.remove();
         }
       }, 20);
     }
 
+    function spawnFood() {
+      if (paused) return;
+
+      const food = document.createElement("div");
+      food.classList.add("food");
+      const foodOptions = ["🍎", "🍌", "🍓"];
+      food.innerText = foodOptions[Math.floor(Math.random() * foodOptions.length)];
+      food.style.width = "35px";
+      food.style.height = "35px";
+      food.style.fontSize = "28px";
+      food.style.left = Math.random() * (window.innerWidth - 35) + "px";
+      game.appendChild(food);
+
+      let y = 0;
+      const fall = setInterval(() => {
+        if (paused) return;
+
+        y += 4;
+        food.style.top = y + "px";
+
+        const rect = food.getBoundingClientRect();
+        const playerRect = player.getBoundingClientRect();
+
+        if (
+          rect.bottom >= playerRect.top &&
+          rect.left < playerRect.right &&
+          rect.right > playerRect.left
+        ) {
+          clearInterval(fall);
+          score += 10;
+          updateScore();
+          food.remove();
+        }
+
+        if (y > window.innerHeight) {
+          clearInterval(fall);
+          food.remove();
+        }
+      }, 20);
+    }
+
     function updateScore() {
-      if (!paused) {
-        score++;
-        scoreDisplay.innerText = "Score: " + score;
-      }
+      scoreDisplay.innerText = "Score: " + score;
     }
 
     function endGame() {
       clearInterval(gameInterval);
       clearInterval(bombInterval);
       clearInterval(powerUpInterval);
-      alert("Game Over! Your score was " + score);
+      clearInterval(foodInterval);
+      alert("Game Over! " + playerName + "'s score was " + score);
+      saveHighScore(playerName, score);
+      showHighScores();
       window.location.reload();
+    }
+
+    function startGame() {
+      gameInterval = setInterval(() => {
+        if (!paused) {
+          score++;
+          updateScore();
+        }
+      }, 1000);
+      setBombInterval();
+      setPowerUpInterval();
+      setFoodInterval();
+      showHighScores();
     }
 
     pauseBtn.addEventListener("click", () => {
@@ -260,10 +356,21 @@
       pauseBtn.innerText = paused ? "Resume Game" : "Pause Game";
     });
 
-    function startGame() {
-      gameInterval = setInterval(updateScore, 1000);
-      setBombInterval();
-      setPowerUpInterval();
+    function saveHighScore(name, score) {
+      const scores = JSON.parse(localStorage.getItem("highScores") || "[]");
+      scores.push({ name, score });
+      scores.sort((a, b) => b.score - a.score);
+      localStorage.setItem("highScores", JSON.stringify(scores.slice(0, 10)));
+    }
+
+    function showHighScores() {
+      const scores = JSON.parse(localStorage.getItem("highScores") || "[]");
+      scoreList.innerHTML = "";
+      scores.forEach(entry => {
+        const li = document.createElement("li");
+        li.textContent = `${entry.name}: ${entry.score}`;
+        scoreList.appendChild(li);
+      });
     }
   </script>
 </body>
