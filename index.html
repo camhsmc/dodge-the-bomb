@@ -36,7 +36,6 @@
     .bomb {
       position: absolute;
       top: -40px;
-      font-size: 30px;
       text-align: center;
     }
 
@@ -50,15 +49,10 @@
       border-radius: 5px;
     }
 
-    #controls {
+    #pauseBtn {
       position: absolute;
       top: 10px;
       right: 10px;
-    }
-
-    #controls select,
-    #controls button {
-      margin-left: 10px;
       font-size: 16px;
       padding: 5px 10px;
     }
@@ -67,15 +61,7 @@
 <body>
   <div id="game">
     <div id="score">Score: 0</div>
-    <div id="controls">
-      <label for="difficulty">Difficulty:</label>
-      <select id="difficulty">
-        <option value="easy">Easy</option>
-        <option value="medium" selected>Medium</option>
-        <option value="hard">Hard</option>
-      </select>
-      <button id="pauseBtn">Pause Game</button>
-    </div>
+    <button id="pauseBtn">Pause Game</button>
     <div id="player">
       <img src="player.png" alt="Player">
     </div>
@@ -85,20 +71,35 @@
     const player = document.getElementById("player");
     const game = document.getElementById("game");
     const scoreDisplay = document.getElementById("score");
-    const difficultySelect = document.getElementById("difficulty");
     const pauseBtn = document.getElementById("pauseBtn");
 
     let playerX = window.innerWidth / 2;
     let score = 0;
     let gameInterval, bombInterval;
     let paused = false;
-
     let currentDifficulty = "medium";
+
     const bombSpeeds = {
       easy: 1200,
       medium: 800,
       hard: 400
     };
+
+    const validDifficulties = {
+      easy: "Easy",
+      medium: "Medium",
+      hard: "Hard"
+    };
+
+    function askForDifficulty() {
+      let choice;
+      do {
+        choice = prompt("Choose difficulty: easy, medium, or hard").toLowerCase();
+      } while (!validDifficulties.hasOwnProperty(choice));
+
+      currentDifficulty = choice;
+      startGame();
+    }
 
     function setBombInterval() {
       if (bombInterval) clearInterval(bombInterval);
@@ -119,16 +120,18 @@
 
       const bomb = document.createElement("div");
       bomb.classList.add("bomb");
-      bomb.innerText = "💣";
+
+      // 10% chance to be 💩 instead of 💣
+      const isPoop = Math.random() < 0.1;
+      bomb.innerText = isPoop ? "💩" : "💣";
 
       const bombSize = Math.random();
       let size = 40;
-
       if (bombSize < 0.33) {
-        size = 25; // small
+        size = 25;
       } else if (bombSize > 0.66) {
-        size = 60; // large
-      } // else keep default (medium)
+        size = 60;
+      }
 
       bomb.style.width = size + "px";
       bomb.style.height = size + "px";
@@ -176,19 +179,17 @@
       window.location.reload();
     }
 
-    difficultySelect.addEventListener("change", () => {
-      currentDifficulty = difficultySelect.value;
-      setBombInterval();
-    });
-
     pauseBtn.addEventListener("click", () => {
       paused = !paused;
       pauseBtn.innerText = paused ? "Resume Game" : "Pause Game";
     });
 
-    // Start game
-    gameInterval = setInterval(updateScore, 1000);
-    setBombInterval();
+    function startGame() {
+      gameInterval = setInterval(updateScore, 1000);
+      setBombInterval();
+    }
+
+    askForDifficulty();
   </script>
 </body>
 </html>
