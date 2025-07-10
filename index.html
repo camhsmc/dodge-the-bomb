@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dodge the Bomb</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #game {
+      width: 100vw;
+      height: 100vh;
+      background: lightblue;
+      position: relative;
+    }
+
+    #player {
+      width: 60px;
+      height: 60px;
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      margin-left: -30px;
+    }
+
+    #player img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid white;
+    }
+
+    .bomb {
+      position: absolute;
+      top: -40px;
+      font-size: 30px;
+      text-align: center;
+    }
+
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 20px;
+      background: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+
+    #controls select,
+    #controls button {
+      margin-left: 10px;
+      font-size: 16px;
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="score">Score: 0</div>
+    <div id="controls">
+      <label for="difficulty">Difficulty:</label>
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="pauseBtn">Pause Game</button>
+    </div>
+    <div id="player">
+      <img src="player.png" alt="Player">
+    </div>
+  </div>
+
+  <script>
+    const player = document.getElementById("player");
+    const game = document.getElementById("game");
+    const scoreDisplay = document.getElementById("score");
+    const difficultySelect = document.getElementById("difficulty");
+    const pauseBtn = document.getElementById("pauseBtn");
+
+    let playerX = window.innerWidth / 2;
+    let score = 0;
+    let gameInterval, bombInterval;
+    let paused = false;
+
+    let currentDifficulty = "medium";
+    const bombSpeeds = {
+      easy: 1200,
+      medium: 800,
+      hard: 400
+    };
+
+    function setBombInterval() {
+      if (bombInterval) clearInterval(bombInterval);
+      bombInterval = setInterval(spawnBomb, bombSpeeds[currentDifficulty]);
+    }
+
+    document.addEventListener("keydown", e => {
+      if (paused) return;
+      if (e.key === "ArrowLeft") playerX -= 20;
+      if (e.key === "ArrowRight") playerX += 20;
+
+      playerX = Math.max(0, Math.min(playerX, window.innerWidth - 60));
+      player.style.left = playerX + "px";
+    });
+
+    function spawnBomb() {
+      if (paused) return;
+
+      const bomb = document.createElement("div");
+      bomb.classList.add("bomb");
+      bomb.innerText = "💣";
+
+      const bombSize = Math.random();
+      let size = 40;
+
+      if (bombSize < 0.33) {
+        size = 25; // small
+      } else if (bombSize > 0.66) {
+        size = 60; // large
+      } // else keep default (medium)
+
+      bomb.style.width = size + "px";
+      bomb.style.height = size + "px";
+      bomb.style.fontSize = size - 10 + "px";
+      bomb.style.left = Math.random() * (window.innerWidth - size) + "px";
+      game.appendChild(bomb);
+
+      let bombY = 0;
+      const fall = setInterval(() => {
+        if (paused) return;
+
+        bombY += 5;
+        bomb.style.top = bombY + "px";
+
+        const bombRect = bomb.getBoundingClientRect();
+        const playerRect = player.getBoundingClientRect();
+
+        if (
+          bombRect.bottom >= playerRect.top &&
+          bombRect.left < playerRect.right &&
+          bombRect.right > playerRect.left
+        ) {
+          clearInterval(fall);
+          endGame();
+        }
+
+        if (bombY > window.innerHeight) {
+          clearInterval(fall);
+          bomb.remove();
+        }
+      }, 20);
+    }
+
+    function updateScore() {
+      if (!paused) {
+        score++;
+        scoreDisplay.innerText = "Score: " + score;
+      }
+    }
+
+    function endGame() {
+      clearInterval(gameInterval);
+      clearInterval(bombInterval);
+      alert("Game Over! Your score was " + score);
+      window.location.reload();
+    }
+
+    difficultySelect.addEventListener("change", () => {
+      currentDifficulty = difficultySelect.value;
+      setBombInterval();
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      paused = !paused;
+      pauseBtn.innerText = paused ? "Resume Game" : "Pause Game";
+    });
+
+    // Start game
+    gameInterval = setInterval(updateScore, 1000);
+    setBombInterval();
+  </script>
+</body>
+</html>
